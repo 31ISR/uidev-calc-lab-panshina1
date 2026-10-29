@@ -1,13 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
     const display = document.getElementById('display');
-    const button = document.querySelectorAll('.button');
+    const buttons = document.querySelectorAll('.button');
 
     let currentExpression = '';
 
     function handleButton(event) {
-        const button = event.target;
-        const value = button.textContent;
-        const id = button.id;
+        const btn = event.currentTarget;
+        const value = btn.textContent;
+        const id = btn.id;
 
         if (id === 'clear') {
             currentExpression = '';
@@ -17,69 +17,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (value === '=') {
             try {
-                const formattedExpression = currentExpression
-                .replaceAll('×', '*')
-                .replaceAll('÷', '/')
-                .replaceAll('-', '-');
+                const formatted = currentExpression
+                    .replaceAll('×', '*')
+                    .replaceAll('÷', '/')
+                    .replaceAll('−', '-');
 
-                const result = eval(formattedExpression);
+                const result = Function('"use strict"; return (' + formatted + ')')();
+                if (!Number.isFinite(result)) throw new Error('Invalid');
                 display.textContent = result;
-                currentExpression = String(result); 
-            } catch (error) {
+                currentExpression = String(result);
+            } catch {
                 display.textContent = 'Ошибка';
                 currentExpression = '';
             }
             return;
         }
+
         if (id === 'plus-minus') {
-            try {
-                const formattedExpression = currentExpression
-                    .replaceAll('×', '*')
-                    .replaceAll('÷', '/')
-                    .replaceAll('-', '-');
-                let res = eval (formattedExpression);
-                res = res * -1;
-                currentExpression = String(res);
-                display.textContent = currentExpression;
-            } catch (error) {
-                if (currentExpression) {
-                    currentExpression = String(parseFloat(currentExpression) * -1);
-                    display.textContent = currentExpression;
-                }
+            const match = currentExpression.match(/(.*?)(-?\d*\.?\d+)$/);
+            if (match) {
+                const prefix = match[1];
+                const lastNum = match[2];
+                const toggled = lastNum.startsWith('-')
+                    ? lastNum.slice(1)
+                    : '-' + lastNum;
+                currentExpression = prefix + toggled;
+                display.textContent = currentExpression || '0';
             }
             return;
-    }
-    if (id === 'percent') {
-        try {
-            if (currentExpression.includes('+') || currentExpression.includes('-') || currentExpression.includes('×') || currentExpression.includes('÷')) {
-                const parts = currentExpression.split(/[\+\-\×\÷]/);
-                if (parts.length === 2) {
-                    const base = parseFloat(parts[0]);
-                    const percentVal = parseFloat(parts[0]);
-                    const calculatedPercent = (base / 100) * percentVal;
-                    currentExpression = currentExpression.replace(parts[1], calculatedPercent);
+        }
+
+        if (id === 'percent') {
+            try {
+                const opMatch = currentExpression.match(/^(.*?)([+\-×÷])(\d*\.?\d+)$/);
+                if (opMatch) {
+                    const base = parseFloat(opMatch[1]);
+                    const percentVal = parseFloat(opMatch[3]);
+                    const calculated = (base / 100) * percentVal;
+                    currentExpression = opMatch[1] + opMatch[2] + calculated;
+                } else {
+                    const res = parseFloat(currentExpression) / 100;
+                    currentExpression = String(res);
                 }
-            } else {
-                const res = parseFloat(currentExpression) / 100;
-                currentExpression = String(res);
+                display.textContent = currentExpression || '0';
+            } catch {
+                display.textContent = 'Ошибка';
+            }
+            return;
+        }
+
+        if (currentExpression === '0' && !['+', '-', '×', '÷', '.'].includes(value)) {
+            currentExpression = value;
+        } else {
+            currentExpression += value;
         }
         display.textContent = currentExpression;
-    } catch (e) {
-        display.textContent = 'Ошибка';
     }
-    return;
-}
 
-if (currentExpression === '0' && !['+', '-', '×', '÷', '.'].includes(value)) {
-    currentExpression = value;
-} else {
-    currentExpression += value; 
-}
-
-    display.textContent = currentExpression;
-}
-
-buttons.forEach(button => {
-    button.addEventListener('click', handleButton);
-});
+    buttons.forEach(b => b.addEventListener('click', handleButton));
 });
